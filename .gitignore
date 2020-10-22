@@ -1,0 +1,14 @@
+st
+*.deps
+*.o
+.ccls-cache
+*.rej
+*.orig
+tags
+cscope.files
+cscope.in.out
+cscope.out
+cscope.po.out
+*.swp
+result
+source

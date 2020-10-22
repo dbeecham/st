@@ -2,56 +2,92 @@
 # See LICENSE file for copyright and license details.
 .POSIX:
 
-include config.mk
 
-SRC = st.c x.c
-OBJ = $(SRC:.c=.o)
+#########################################
+# VARIABLES - overridable by make flags #
+#########################################
+CFLAGS = -Iinclude -Iinc -Isrc -Wall -Wextra \
+       -Wno-implicit-fallthrough -Wno-unused-const-variable \
+       -std=c11 -g3 -Os -D_FORTIFY_SOURCE=2 -fexceptions \
+       -fasynchronous-unwind-tables -fpie -Wl,-pie \
+       -fstack-protector-strong -grecord-gcc-switches \
+       -Werror=format-security \
+       -Werror=implicit-function-declaration -Wl,-z,defs -Wl,-z,now \
+       -Wl,-z,relro $(EXTRA_CFLAGS)
+LDFLAGS = $(EXTRA_LDFLAGS)
+LDLIBS = -lm -lrt -lX11 -lutil -lXft $(shell pkg-config --libs fontconfig) $(shell pkg-config --libs freetype2) $(EXTRA_LDLIBS)
+DESTDIR = /
+VERSION = 0.8.4
+PREFIX = /usr/local
+MANPREFIX = $(PREFIX)/share/man
+Q = @
+SED = sed
+CSCOPE = cscope
+CTAGS = ctags
+INSTALL = install
 
-all: options st
+default: st
 
-options:
-	@echo st build options:
-	@echo "CFLAGS  = $(STCFLAGS)"
-	@echo "LDFLAGS = $(STLDFLAGS)"
-	@echo "CC      = $(CC)"
-
-config.h:
-	cp config.def.h config.h
-
-.c.o:
-	$(CC) $(STCFLAGS) -c $<
-
-st.o: config.h st.h win.h
-x.o: arg.h config.h st.h win.h
-
-$(OBJ): config.h config.mk
-
-st: $(OBJ)
-	$(CC) -o $@ $(OBJ) $(STLDFLAGS)
+st: st.o x.o
 
 clean:
-	rm -f st $(OBJ) st-$(VERSION).tar.gz
+	rm -f st *.o
 
-dist: clean
-	mkdir -p st-$(VERSION)
-	cp -R FAQ LEGACY TODO LICENSE Makefile README config.mk\
-		config.def.h st.info st.1 arg.h st.h win.h $(SRC)\
-		st-$(VERSION)
-	tar -cf - st-$(VERSION) | gzip > st-$(VERSION).tar.gz
-	rm -rf st-$(VERSION)
+install: $(DESTDIR)$(PREFIX)/bin/st
 
-install: st
-	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp -f st $(DESTDIR)$(PREFIX)/bin
-	chmod 755 $(DESTDIR)$(PREFIX)/bin/st
-	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
-	sed "s/VERSION/$(VERSION)/g" < st.1 > $(DESTDIR)$(MANPREFIX)/man1/st.1
-	chmod 644 $(DESTDIR)$(MANPREFIX)/man1/st.1
-	tic -sx st.info
-	@echo Please see the README file regarding the terminfo entry of st.
+.PHONY: cscope
+cscope: | cscope.files
+	$(CSCOPE) -b -q -k
 
-uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/st
-	rm -f $(DESTDIR)$(MANPREFIX)/man1/st.1
+cscope.files: st.c.deps x.c.deps
+	$(Q)cat $^ | sort | uniq > $@
 
-.PHONY: all options clean dist install uninstall
+.PHONY: tags
+tags: | cscope.files
+	$(CTAGS) -L cscope.files
+
+
+
+##################
+# IMPLICIT RULES #
+##################
+
+$(DESTDIR)$(PREFIX)/bin:
+	@echo "INSTALL $@"
+	$(Q)$(INSTALL) -m 0755 -d $@
+
+$(DESTDIR)$(PREFIX)/lib:
+	@echo "INSTALL $@"
+	$(Q)$(INSTALL) -m 0755 -d $@
+
+$(DESTDIR)$(PREFIX)/include:
+	@echo "INSTALL $@"
+	$(Q)$(INSTALL) -m 0755 -d $@
+
+$(DESTDIR)$(PREFIX)/lib/%.so: %.so | $(DESTDIR)$(PREFIX)/lib
+	@echo "INSTALL $@"
+	$(Q)$(INSTALL) -m 0644 $< $@
+
+$(DESTDIR)$(PREFIX)/lib/%.a: %.a | $(DESTDIR)$(PREFIX)/lib
+	@echo "INSTALL $@"
+	$(Q)$(INSTALL) -m 0644 $< $@
+
+$(DESTDIR)$(PREFIX)/include/%.h: %.h | $(DESTDIR)$(PREFIX)/include
+	@echo "INSTALL $@"
+	$(Q)$(INSTALL) -m 0644 $< $@
+
+$(DESTDIR)$(PREFIX)/bin/%: % | $(DESTDIR)$(PREFIX)/bin
+	@echo "INSTALL $@"
+	$(Q)$(INSTALL) -m 0755 $< $@
+
+%: %.o
+	@echo "LD $@"
+	$(Q)$(CROSS_COMPILE)$(CC) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
+
+%.o: %.c
+	@echo "CC $@"
+	$(Q)$(CROSS_COMPILE)$(CC) -c $(CFLAGS) $(CPPFLAGS) -o $@ $^
+
+%.deps: %
+	@echo "CC $@"
+	$(Q)$(CC) -c $(CFLAGS) $(CPPFLAGS) -M $^ | $(SED) -e 's/[\\ ]/\n/g' | $(SED) -e '/^$$/d' -e '/\.o:[ \t]*$$/d' | sort | uniq > $@

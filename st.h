@@ -77,10 +77,19 @@ typedef union {
 	const char *s;
 } Arg;
 
+typedef struct {
+    uint b;
+    uint mask;
+    void (*func)(const Arg *);
+    const Arg arg;
+} MouseKey;
+
 void die(const char *, ...);
 void redraw(void);
 void draw(void);
 
+void kscrolldown(const Arg *);
+void kscrollup(const Arg *);
 void printscreen(const Arg *);
 void printsel(const Arg *);
 void sendbreak(const Arg *);
@@ -95,9 +104,6 @@ int ttynew(char *, char *, char *, char **);
 size_t ttyread(void);
 void ttyresize(int, int);
 void ttywrite(const char *, size_t, int);
-
-void resettitle(void);
-
 void selclear(void);
 void selinit(void);
 void selstart(int, int, int);
@@ -123,3 +129,5 @@ extern char *termname;
 extern unsigned int tabspaces;
 extern unsigned int defaultfg;
 extern unsigned int defaultbg;
+
+extern MouseKey mkeys[];

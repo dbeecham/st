@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 201805L
+
 /* See LICENSE for license details. */
 #include <errno.h>
 #include <math.h>
@@ -1194,7 +1196,10 @@ xinit(int cols, int rows)
 			PropModeReplace, (uchar *)&thispid, 1);
 
 	win.mode = MODE_NUMLOCK;
-	resettitle();
+
+    // reset title
+	xsettitle(NULL);
+
 	xhints();
 	XMapWindow(xw.dpy, xw.win);
 	XSync(xw.dpy, False);
@@ -1991,8 +1996,11 @@ usage(void)
 	    " [stty_args ...]\n", argv0, argv0);
 }
 
-int
-main(int argc, char *argv[])
+
+int main (
+    int argc,
+    char *argv[]
+)
 {
 	xw.l = xw.t = 0;
 	xw.isfixed = False;
@@ -2036,7 +2044,7 @@ main(int argc, char *argv[])
 		opt_embed = EARGF(usage());
 		break;
 	case 'v':
-		die("%s " VERSION "\n", argv0);
+		die("%s 0.8.4 \n", argv0);
 		break;
 	default:
 		usage();
