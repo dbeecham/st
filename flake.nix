@@ -1,14 +1,15 @@
 {
   inputs = {
+    # updated 2021-12-01
     nixpkgs = {
       type = "github";
       owner = "NixOS";
       repo = "nixpkgs";
-      rev = "d2b8b928655f1b5e80985e49555aef70818a9bdf";
+      rev = "c30bbcfae7a5cbe44ba4311e51d3ce24b5c84e1b";
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, ... }: {
+  outputs = { self, nixpkgs, ... }: {
     defaultPackage.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.stdenv.mkDerivation {
       name = "st";
       src = self;
